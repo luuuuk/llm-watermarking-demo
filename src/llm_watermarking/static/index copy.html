@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Token Picker</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --accent: #6c5ce7;
+            --accent-soft: #6c5ce71a;
+            --border: #00000026;
+            --radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            font-size: 14px;
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        #prompt-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        #prompt {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: transparent;
+            color: inherit;
+            font-size: 14px;
+        }
+
+        #prompt:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
+        }
+
+        button {
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: transparent;
+            color: inherit;
+            padding: 8px 14px;
+            transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease;
+        }
+
+        button:hover:not(:disabled) {
+            border-color: var(--accent);
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            filter: brightness(1.08);
+        }
+
+        #generated {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 3px;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            min-height: 2.6em;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        #generated-placeholder {
+            opacity: 0.5;
+        }
+
+        .token-box {
+            display: inline-block;
+            white-space: pre;
+            padding: 2px 5px;
+            border-radius: 5px;
+            background: var(--accent-soft);
+            border: 1px solid #6c5ce766;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            cursor: default;
+        }
+
+        .token-box:nth-child(even) {
+            background: #00b89433;
+            border-color: #00b89466;
+        }
+
+        #action-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #action-row .spacer {
+            flex: 1;
+        }
+
+        #watermark-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: #6c5ce70d;
+        }
+
+        #watermark-row label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #watermark-row input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .btn-synthid {
+            background: #00b894;
+            border-color: #00b894;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-synthid:hover:not(:disabled) {
+            filter: brightness(1.08);
+        }
+
+        #viz-row {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 18px;
+        }
+
+        #tournament-panel {
+            grid-column: 1 / span 2;
+        }
+
+        .viz-panel {
+            flex: 1 1 50%;
+            min-width: 0;
+        }
+
+        .viz-panel-label {
+            font-size: 11px;
+            opacity: 0.55;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        #tournament {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            padding: 10px 2px;
+            margin-bottom: 12px;
+        }
+
+        .tournament-round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            gap: 10px;
+            min-width: 150px;
+            flex-shrink: 0;
+        }
+
+        .tournament-round-label {
+            font-size: 11px;
+            opacity: 0.55;
+            text-align: center;
+            margin-bottom: -2px;
+        }
+
+        .tournament-match {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            background: #00000005;
+            position: relative;
+        }
+
+        .tournament-match::after {
+            content: "→";
+            position: absolute;
+            right: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: .4;
+        }
+
+        .tournament-candidate {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+            padding: 3px 6px;
+            border-radius: 5px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+        }
+
+        .tournament-candidate .g {
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+
+        .tournament-candidate.winner {
+            background: #00b89433;
+            border: 1px solid #00b89466;
+            font-weight: 700;
+        }
+
+        .tournament-candidate.loser {
+            opacity: 0.4;
+            text-decoration: line-through;
+        }
+
+        #tournament-result {
+            text-align: center;
+            align-self: center;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-weight: 700;
+            padding: 8px 12px;
+            border: 1px solid #00b89466;
+            border-radius: var(--radius);
+            background: #00b89433;
+        }
+
+        #candidates {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .candidate {
+            display: grid;
+            grid-template-columns: 180px 1fr 70px;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            background: white;
+            overflow: hidden;
+            position: relative;
+            font-family:
+                ui-monospace,
+                SFMono-Regular,
+                Menlo,
+                Consolas,
+                monospace;
+        }
+
+        .candidate .bar {
+            height: 10px;
+            border-radius: 999px;
+            background:
+                linear-gradient(90deg, #6c5ce7, #9b7dff);
+            position: relative;
+            transition:
+                width 300ms ease;
+        }
+
+        .candidate .label,
+        .candidate .prob {
+            position: relative;
+            z-index: 1;
+        }
+
+        .candidate .label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .candidate .prob {
+            flex-shrink: 0;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        .candidate:hover:not(:disabled) {
+            border-color: var(--accent);
+        }
+
+        #status {
+            margin-top: 10px;
+            opacity: 0.65;
+            min-height: 1.2em;
+        }
+
+        #detector-panel {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            background: #fafafa;
+        }
+
+        #detector-score {
+            position: relative;
+            height: 28px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #edf0f3;
+        }
+
+        #detector-score::after {
+            content: "0.5 threshold";
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(0, 0, 0, .15);
+            font-size: 10px;
+        }
+
+        #detector-score-fill {
+            height: 100%;
+            background:
+                linear-gradient(90deg,
+                    #00b894,
+                    #55efc4);
+        }
+
+        #detector-confidence {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        #decoder-view {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 10px;
+
+            background: white;
+            border: 1px solid var(--border);
+
+            white-space: pre-wrap;
+
+            font-family:
+                ui-monospace,
+                SFMono-Regular,
+                Menlo,
+                Consolas,
+                monospace;
+        }
+
+        .detector-entry {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 3px 0;
+        }
+
+        .bar-track {
+            width: 100%;
+            height: 10px;
+            background: #edf0f3;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .g-track {
+            height: 8px;
+            background: #edf0f3;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .g-fill {
+            height: 100%;
+        }
+
+        .token-green {
+            background: #e7fff8;
+            border-color: #00b894;
+        }
+
+        .token-white {
+            background: #f5f5f5;
+            border-color: #d0d0d0;
+        }
+
+        #tournament-result {
+            font-size: 18px;
+            box-shadow: 0 6px 18px rgba(0, 184, 148, .15);
+        }
+
+        .tournament-candidate.winner {
+            transform: scale(1.02);
+        }
+
+        .threshold-marker {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #444;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="prompt-row">
+        <input id="prompt" type="text" value="Why is the sky blue?" />
+        <button id="start-btn" class="btn-primary">Start</button>
+    </div>
+
+    <div id="generated"></div>
+
+    <div id="watermark-row">
+        <input id="watermark-toggle" type="checkbox" />
+        <label for="watermark-toggle">🔒 Enable SynthID watermark (tournament sampling)</label>
+    </div>
+
+    <div id="action-row">
+        <button id="random-btn" disabled>🎲 Random pick</button>
+        <button id="synthid-btn" class="btn-synthid" disabled hidden>🏆 Generate (SynthID)</button>
+        <div class="spacer"></div>
+        <button id="reset-btn">Reset</button>
+    </div>
+
+    <div id="viz-row">
+        <div id="candidates-panel" class="viz-panel">
+            <div class="viz-panel-label">
+                Next-token distribution
+            </div>
+            <div id="candidates"></div>
+        </div>
+        <div id="tournament-panel" class="viz-panel">
+            <div class="viz-panel-label">
+                Tournament selection
+            </div>
+            <div id="tournament"></div>
+        </div>
+        <div id="detector-panel">
+            <div class="viz-panel-label">
+                SynthID detector
+            </div>
+            <div id="detector-score"></div>
+            <div id="detector-confidence">
+                No evidence yet
+            </div>
+            <div id="detector-history"></div>
+            <div class="viz-panel-label" style="margin-top:12px">
+                Decoder view
+            </div>
+            <pre id="decoder-view">
+Detector waiting for tokens...
+</pre>
+        </div>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+        const apiBase = "";
+        let sessionId = null;
+        let currentDistribution = [];
+
+        const promptEl = document.getElementById("prompt");
+        const startBtn = document.getElementById("start-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const randomBtn = document.getElementById("random-btn");
+        const synthidBtn = document.getElementById("synthid-btn");
+        const watermarkToggle = document.getElementById("watermark-toggle");
+        const generatedEl = document.getElementById("generated");
+        const candidatesEl = document.getElementById("candidates");
+        const tournamentEl = document.getElementById("tournament");
+        const detectorScore =
+            document.getElementById(
+                "detector-score"
+            );
+        const detectorHistory =
+            document.getElementById(
+                "detector-history"
+            );
+        const detectorConfidence =
+            document.getElementById(
+                "detector-confidence"
+            );
+        const decoderView =
+            document.getElementById(
+                "decoder-view"
+            );
+        const statusEl = document.getElementById("status");
+
+        function setStatus(text) {
+            statusEl.textContent = text;
+        }
+
+        function watermarkEnabled() {
+            return watermarkToggle.checked;
+        }
+
+        function updateModeUI() {
+            const on = watermarkEnabled();
+            synthidBtn.hidden = !on;
+            randomBtn.hidden = on;
+            candidatesEl.hidden = on;
+            const hasSession = !!sessionId;
+            synthidBtn.disabled = !hasSession;
+            randomBtn.disabled = !hasSession || currentDistribution.length === 0;
+        }
+
+        function setBusy(busy) {
+            candidatesEl.querySelectorAll("button").forEach((b) => (b.disabled = busy));
+            randomBtn.disabled = busy || !sessionId || currentDistribution.length === 0;
+            synthidBtn.disabled = busy || !sessionId;
+            watermarkToggle.disabled = busy;
+        }
+
+        function renderGeneratedTokens(tokens) {
+            generatedEl.innerHTML = "";
+            if (tokens.length === 0) {
+                const placeholder = document.createElement("span");
+                placeholder.id = "generated-placeholder";
+                placeholder.textContent = "Generated tokens will appear here…";
+                generatedEl.appendChild(placeholder);
+                return;
+            }
+            for (const item of tokens) {
+                const box = document.createElement("span");
+                box.className =
+                    item.green
+                        ? "token-box token-green"
+                        : "token-box token-white";
+                box.textContent = item.token;
+                box.title = `id=${item.id}  p=${(item.prob * 100).toFixed(2)}%`;
+                generatedEl.appendChild(box);
+            }
+        }
+
+        function renderCandidates(distribution) {
+            currentDistribution = distribution;
+            candidatesEl.innerHTML = "";
+            for (const item of distribution) {
+                const btn = document.createElement("button");
+                btn.className = "candidate";
+                btn.dataset.tokenId = item.id;
+
+                const track = document.createElement("div");
+                track.className = "bar-track";
+                const bar = document.createElement("div");
+                bar.className = "bar";
+                bar.style.width =
+                    `${Math.max(item.prob * 100, 1).toFixed(2)}%`;
+                track.appendChild(bar);
+
+                const label = document.createElement("span");
+                label.className = "label";
+                label.textContent = JSON.stringify(item.token);
+
+                const prob = document.createElement("span");
+                prob.className = "prob";
+                prob.textContent = `${(item.prob * 100).toFixed(2)}%`;
+
+                btn.appendChild(label);
+                btn.appendChild(track);
+                btn.appendChild(prob);
+                btn.addEventListener("click", () => selectToken(item.id));
+                candidatesEl.appendChild(btn);
+            }
+            updateModeUI();
+        }
+
+        function renderDetector(history) {
+
+            detectorScore.innerHTML = "";
+            detectorHistory.innerHTML = "";
+
+            if (!history || history.length === 0) {
+                detectorConfidence.textContent =
+                    "No evidence yet";
+                return;
+            }
+
+            const greens =
+                history.filter(h => h.green)
+                    .length;
+
+            const ratio =
+                greens / history.length;
+
+            const fill =
+                document.createElement("div");
+
+            fill.id = "detector-score-fill";
+            fill.style.width =
+                `${ratio * 100}%`;
+
+            detectorScore.appendChild(fill);
+
+            const confidence =
+                Math.abs(ratio - 0.5) * 2;
+
+            detectorConfidence.textContent =
+                `${(confidence * 100).toFixed(0)}% confidence · ${ratio > 0.55
+                    ? "Likely watermarked"
+                    : "Weak evidence"
+                }`;
+
+            history.forEach((h, i) => {
+                const row =
+                    document.createElement("div");
+                row.className =
+                    "detector-entry";
+                const color =
+                    h.green
+                        ? "#00b894"
+                        : "#95a5a6";
+                const bg =
+                    h.green
+                        ? "#eafaf6"
+                        : "#f7f7f7";
+                row.style.background = bg;
+                row.style.borderRadius = "8px";
+                row.style.padding = "6px 10px";
+                row.style.marginBottom = "4px";
+                row.innerHTML =
+                    `
+<div style="width:100%">
+<div
+style="
+display:flex;
+justify-content:space-between;
+margin-bottom:4px;
+"
+>
+<span>T${i}</span>
+<span style="
+color:${color};
+font-weight:700;
+">
+${h.g.toFixed(3)}
+</span>
+</div>
+<div class="g-track">
+<div
+class="g-fill"
+style="
+width:${h.g * 100}%;
+background:${color};
+"
+></div>
+</div>
+</div>
+`;
+                detectorHistory.appendChild(row);
+            });
+        }
+
+        function renderDecoder(
+            detection
+        ) {
+            if (!detection) {
+                return;
+            }
+            decoderView.textContent =
+                `Detector View
+
+Context → hash(seed, context, token)
+
+g = ${detection.g.toFixed(4)}
+
+Classification:
+${detection.green ? "🟢 GREEN" : "⚪ WHITE"}
+
+Evidence contribution:
+${detection.green ? "+1" : "0"}
+
+Running detector score:
+${detection.score}
+`;
+        }
+
+        function renderTournament(rounds, selectedToken) {
+            tournamentEl.innerHTML = "";
+            if (!rounds || rounds.length === 0) return;
+
+            rounds.forEach((round, roundIndex) => {
+                const col = document.createElement("div");
+                col.className = "tournament-round";
+
+                const label = document.createElement("div");
+                label.className = "tournament-round-label";
+                label.textContent = `Round ${roundIndex + 1}`;
+                col.appendChild(label);
+
+                for (const match of round) {
+                    const box = document.createElement("div");
+                    box.className = "tournament-match";
+                    for (const key of ["a", "b"]) {
+                        const cand = match[key];
+                        const row = document.createElement("div");
+                        row.className =
+                            "tournament-candidate " + (match.winner === key ? "winner" : "loser");
+                        const label = document.createElement("span");
+                        label.textContent = JSON.stringify(cand.token);
+                        const g = document.createElement("span");
+                        g.className = "g";
+                        g.textContent = `g=${cand.g.toFixed(3)}`;
+                        row.appendChild(label);
+                        row.appendChild(g);
+                        box.appendChild(row);
+                    }
+                    col.appendChild(box);
+                }
+                tournamentEl.appendChild(col);
+            });
+
+            const result = document.createElement("div");
+            result.id = "tournament-result";
+            result.textContent = `🏆 ${JSON.stringify(selectedToken.token)} wins`;
+            tournamentEl.appendChild(result);
+        }
+
+        function pickRandomTokenId() {
+            // Sample proportionally to the (renormalized) shown distribution.
+            const total = currentDistribution.reduce((sum, item) => sum + item.prob, 0);
+            let r = Math.random() * total;
+            for (const item of currentDistribution) {
+                r -= item.prob;
+                if (r <= 0) return item.id;
+            }
+            return currentDistribution[currentDistribution.length - 1].id;
+        }
+
+        async function start() {
+            setStatus("Loading model / starting session…");
+            startBtn.disabled = true;
+            try {
+                const res = await fetch(`${apiBase}/api/start`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: promptEl.value }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "start failed");
+                sessionId = data.session_id;
+                renderGeneratedTokens(data.generated_tokens);
+                tournamentEl.innerHTML = "";
+                renderCandidates(data.distribution);
+                setStatus("Pick a token to continue, or let chance decide.");
+            } catch (err) {
+                setStatus(`Error: ${err.message}`);
+            } finally {
+                startBtn.disabled = false;
+            }
+        }
+
+        async function selectToken(tokenId) {
+            if (!sessionId) return;
+            setBusy(true);
+            setStatus("Generating next distribution…");
+            try {
+                const res = await fetch(`${apiBase}/api/step`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ session_id: sessionId, token_id: tokenId }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "step failed");
+                renderGeneratedTokens(data.generated_tokens);
+                renderDetector(
+                    data.detection_history
+                );
+                renderDecoder(
+                    data.latest_detection
+                );
+                tournamentEl.innerHTML = "";
+                if (data.done) {
+                    currentDistribution = [];
+                    candidatesEl.innerHTML = "";
+                    setStatus("Done.");
+                    sessionId = null;
+                    updateModeUI();
+                } else {
+                    renderCandidates(data.distribution);
+                    setStatus("Pick a token to continue, or let chance decide.");
+                }
+            } catch (err) {
+                setStatus(`Error: ${err.message}`);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        async function runTournament() {
+            if (!sessionId) return;
+            setBusy(true);
+            setStatus("Running SynthID tournament sampling…");
+            try {
+                const res = await fetch(`${apiBase}/api/tournament`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ session_id: sessionId }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "tournament failed");
+                renderGeneratedTokens(data.generated_tokens);
+                renderTournament(data.tournament, data.selected_token);
+                renderDetector(
+                    data.detection_history
+                );
+
+                renderDecoder(
+                    data.latest_detection
+                );
+                if (data.done) {
+                    currentDistribution = [];
+                    candidatesEl.innerHTML = "";
+                    setStatus("Done.");
+                    sessionId = null;
+                    updateModeUI();
+                } else {
+                    renderCandidates(data.distribution);
+                    setStatus("Tournament complete — watermarked token selected.");
+                }
+            } catch (err) {
+                setStatus(`Error: ${err.message}`);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        function randomPick() {
+            if (!sessionId || currentDistribution.length === 0) return;
+            selectToken(pickRandomTokenId());
+        }
+
+        function reset() {
+            sessionId = null;
+            currentDistribution = [];
+            renderGeneratedTokens([]);
+            candidatesEl.innerHTML = "";
+            tournamentEl.innerHTML = "";
+            setStatus("");
+            updateModeUI();
+        }
+
+        startBtn.addEventListener("click", start);
+        resetBtn.addEventListener("click", reset);
+        randomBtn.addEventListener("click", randomPick);
+        synthidBtn.addEventListener("click", runTournament);
+        watermarkToggle.addEventListener("change", updateModeUI);
+        renderGeneratedTokens([]);
+        updateModeUI();
+    </script>
+</body>
+
+</html>

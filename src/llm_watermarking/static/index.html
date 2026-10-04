@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LLM Watermarking</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #eef0f3;
+            --panel: #ffffff;
+            --field: #f3f4f6;
+            --border: #e2e5ea;
+            --text: #16181d;
+            --muted: #6b7280;
+            --green: #1fa84f;
+            --green-bg: #e3f6e9;
+            --green-bd: #8fd3a6;
+            --red: #c2403d;
+            --red-bg: #fbe5e4;
+            --red-bd: #e6a09e;
+            --amber: #b7791f;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 18px;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        #app {
+            display: grid;
+            grid-template-columns: 340px minmax(0, 1fr) 300px;
+            gap: 18px;
+            align-items: start;
+            /*max-width: 1500px;*/
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1100px) {
+            #app {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
+        }
+
+        .panel+.panel {
+            margin-top: 18px;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        h1,
+        h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        h2 {
+            font-size: 16px;
+        }
+
+        .label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin: 14px 0 6px;
+        }
+
+        .label:first-child {
+            margin-top: 0;
+        }
+
+        .hint {
+            font-weight: 400;
+            color: var(--muted);
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 9px 11px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            background: var(--field);
+            color: inherit;
+            font: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 84px;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: 2px solid var(--green);
+            background: #fff;
+        }
+
+        button {
+            cursor: pointer;
+            font: inherit;
+            font-weight: 600;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: inherit;
+            padding: 9px 14px;
+            transition: background .15s ease, transform .08s ease;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--field);
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(.98);
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: default;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: var(--green);
+            border-color: var(--green);
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #199443;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-row button {
+            flex: 1;
+        }
+
+        .segmented {
+            display: flex;
+            gap: 2px;
+            padding: 3px;
+            background: var(--field);
+            border-radius: 11px;
+        }
+
+        .segmented button {
+            flex: 1;
+            border: 0;
+            background: transparent;
+            padding: 7px 6px;
+            color: var(--muted);
+        }
+
+        .segmented button.active {
+            background: var(--panel);
+            color: var(--text);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, .12);
+        }
+
+        .params {
+            margin-top: 16px;
+            padding: 14px;
+            background: #f8f9fb;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .params-title {
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .grid3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .grid3 .label {
+            margin-top: 0;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .mode-note {
+            margin: 10px 2px 0;
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.45;
+        }
+
+        .legend {
+            display: flex;
+            gap: 14px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .legend span::before {
+            content: "";
+            display: inline-block;
+            width: 11px;
+            height: 11px;
+            margin-right: 6px;
+            vertical-align: -1px;
+            border-radius: 3px;
+            border: 1px solid;
+        }
+
+        .legend .lg::before {
+            background: var(--green-bg);
+            border-color: var(--green);
+        }
+
+        .legend .lr::before {
+            background: var(--red-bg);
+            border-color: var(--red);
+        }
+
+        #generated {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 3px;
+            padding: 16px;
+            min-height: 160px;
+            align-content: flex-start;
+            background: #f8f9fb;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-family: var(--mono);
+            line-height: 1.5;
+        }
+
+        #generated-placeholder {
+            color: var(--muted);
+            font-family: inherit;
+        }
+
+        .token-box {
+            display: inline-block;
+            white-space: pre;
+            padding: 1px 5px;
+            border-radius: 5px;
+            border: 1px solid;
+            cursor: default;
+        }
+
+        .token-green {
+            background: var(--green-bg);
+            border-color: var(--green-bd);
+        }
+
+        .token-red {
+            background: var(--red-bg);
+            border-color: var(--red-bd);
+        }
+
+        #status {
+            margin-top: 12px;
+            color: var(--muted);
+            min-height: 1.2em;
+            font-size: 13px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin: 0 0 8px;
+        }
+
+        #candidates {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .candidate {
+            display: grid;
+            grid-template-columns: 150px 1fr 62px;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            padding: 8px 10px;
+            border-left-width: 4px;
+            font-family: var(--mono);
+            font-weight: 500;
+        }
+
+        .candidate.green {
+            border-left-color: var(--green);
+        }
+
+        .candidate.red {
+            border-left-color: var(--red);
+        }
+
+        .candidate .name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bar-track {
+            height: 9px;
+            background: var(--field);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .bar {
+            height: 100%;
+            border-radius: 999px;
+            transition: width .3s ease;
+            background: var(--text);
+        }
+
+        .green .bar {
+            background: var(--green);
+        }
+
+        .red .bar {
+            background: var(--red);
+        }
+
+        .candidate .prob {
+            text-align: right;
+            color: var(--muted);
+        }
+
+        #tournament {
+            display: flex;
+            gap: 22px;
+            overflow-x: auto;
+            padding: 4px 2px 8px;
+        }
+
+        .tournament-round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            gap: 10px;
+            min-width: 150px;
+            flex-shrink: 0;
+        }
+
+        .tournament-round-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .tournament-match {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            background: #f8f9fb;
+        }
+
+        .tournament-candidate {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 3px 6px;
+            border-radius: 5px;
+            border: 1px solid transparent;
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+
+        .tournament-candidate .g {
+            color: var(--muted);
+        }
+
+        .tournament-candidate.winner {
+            background: var(--green-bg);
+            border-color: var(--green-bd);
+            font-weight: 700;
+        }
+
+        .tournament-candidate.loser {
+            opacity: .45;
+            text-decoration: line-through;
+        }
+
+        #tournament-result {
+            align-self: center;
+            font-family: var(--mono);
+            font-weight: 700;
+            padding: 8px 12px;
+            border: 1px solid var(--green-bd);
+            border-radius: 10px;
+            background: var(--green-bg);
+        }
+
+        #verdict {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        #verdict.strong {
+            color: var(--green);
+        }
+
+        #verdict.weak {
+            color: var(--amber);
+        }
+
+        #verdict.none {
+            color: var(--muted);
+        }
+
+        .verdict-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .confidence {
+            text-align: right;
+            color: var(--muted);
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+
+        #score-bar {
+            height: 8px;
+            margin: 14px 0;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--red), #e3b341 50%, var(--green));
+            position: relative;
+        }
+
+        #score-marker {
+            position: absolute;
+            top: -3px;
+            width: 4px;
+            height: 14px;
+            border-radius: 2px;
+            background: var(--text);
+            left: 0;
+            transform: translateX(-50%);
+            transition: left .3s ease;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat .k {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .stat .v {
+            font-weight: 700;
+            text-align: right;
+        }
+
+        #detect-note {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.45;
+        }
+
+        #detect-btn {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #app {
+            grid-template-columns: 360px minmax(0, 1fr);
+        }
+
+        #side,
+        #main {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-width: 0;
+        }
+
+        #side>.panel,
+        #main>.panel {
+            margin-top: 0;
+        }
+
+        .collapsible .panel-head {
+            margin-bottom: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .collapsible:not(.collapsed) .panel-head {
+            margin-bottom: 14px;
+        }
+
+        .collapsible.collapsed .body {
+            display: none;
+        }
+
+        .chev {
+            width: 9px;
+            height: 9px;
+            border-right: 2px solid var(--muted);
+            border-bottom: 2px solid var(--muted);
+            transform: rotate(45deg);
+            transition: transform .15s ease;
+            margin-right: 4px;
+        }
+
+        .collapsible.collapsed .chev {
+            transform: rotate(-45deg);
+        }
+
+        #step-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 22px;
+        }
+
+        #step-grid.has-tournament {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+        }
+
+        @media (max-width: 1300px) {
+            #step-grid.has-tournament {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .candidate {
+            grid-template-columns: 120px 1fr 56px;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 14px;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+        }
+
+        .tournament-candidate.g-green {
+            background: var(--green-bg);
+            border-color: var(--green-bd);
+        }
+
+        .tournament-candidate.g-red {
+            background: var(--red-bg);
+            border-color: var(--red-bd);
+        }
+
+        .tournament-candidate.winner {
+            font-weight: 700;
+            outline: 2px solid var(--text);
+            outline-offset: -1px;
+        }
+
+        #tournament-result.tr-green {
+            background: var(--green-bg);
+            border-color: var(--green-bd);
+        }
+
+        #tournament-result.tr-red {
+            background: var(--red-bg);
+            border-color: var(--red-bd);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div id="side">
+            <section class="panel" id="prompt-panel">
+                <h1 style="margin-bottom:16px">Watermarking</h1>
+                <label class="label" for="prompt">Prompt</label>
+                <textarea id="prompt">Why is the sky blue?</textarea>
+                <div style="margin-top:14px">
+                    <button id="generate-btn" class="btn-primary">Generate</button>
+                    <div class="btn-row">
+                        <button id="start-btn">Step through</button>
+                        <button id="reset-btn">Reset</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel collapsible" id="settings-panel">
+                <div class="panel-head" data-toggle="settings-panel">
+                    <h2>Generation settings</h2><span class="chev"></span>
+                </div>
+                <div class="body">
+            <span class="label">Watermarking mode</span>
+            <div class="segmented" id="mode-seg">
+                <button data-mode="none" class="active">None</button>
+                <button data-mode="hard">Hard</button>
+                <button data-mode="soft">Soft</button>
+                <button data-mode="tournament">Tournament</button>
+            </div>
+            <div class="mode-note" id="mode-note"></div>
+
+            <div class="params">
+                <div class="params-title">Watermarking parameters</div>
+                <div class="grid3">
+                    <div data-modes="none hard soft">
+                        <label class="label" for="gamma">Gamma</label>
+                        <input id="gamma" type="number" min="0.05" max="0.95" step="0.05" value="0.5" />
+                    </div>
+                    <div data-modes="soft">
+                        <label class="label" for="delta">Delta</label>
+                        <input id="delta" type="number" min="0" max="20" step="0.5" value="2" />
+                    </div>
+                    <div data-modes="none hard soft tournament">
+                        <label class="label" for="ctx">Context h</label>
+                        <input id="ctx" type="number" min="1" max="8" step="1" value="4" />
+                    </div>
+                </div>
+
+                <label class="label" for="key">Key</label>
+                <input id="key" type="text" value="your_token" />
+
+                <div data-modes="hard soft">
+                    <label class="label" for="red-words">Force onto the red list <span
+                            class="hint">(optional, comma-separated)</span></label>
+                    <input id="red-words" type="text" placeholder="e.g. Paris, lighthouse, fire" />
+                </div>
+
+                <label class="label" for="max-new">Max new tokens</label>
+                <input id="max-new" type="number" min="1" max="400" step="10" value="120" />
+            </div>
+                </div>
+            </section>
+
+            <section class="panel collapsible collapsed" id="detection">
+                <div class="panel-head" data-toggle="detection">
+                    <h2>Detection</h2><span class="chev"></span>
+                </div>
+                <div class="body">
+            <label class="label" for="detector-key">Detector key</label>
+            <input id="detector-key" type="text" value="your_token" />
+            <button id="detect-btn" disabled>Detect watermark</button>
+
+            <div class="panel" style="margin-top:16px;background:#f8f9fb;box-shadow:none">
+                <div class="verdict-row">
+                    <div id="verdict" class="none">No tokens yet</div>
+                    <div class="confidence">confidence<br><span id="confidence">-</span></div>
+                </div>
+                <div id="score-bar">
+                    <div id="score-marker"></div>
+                </div>
+                <div class="stat"><span class="k">Detector</span><span class="v" id="st-detector">-</span></div>
+                <div class="stat"><span class="k">Green hits</span><span class="v" id="st-green">-</span></div>
+                <div class="stat"><span class="k">Z-score</span><span class="v" id="st-z">-</span></div>
+                <div class="stat"><span class="k">P-value</span><span class="v" id="st-p">-</span></div>
+                <div id="detect-note">Run the detector with a different key, gamma or context h to see the signal
+                    disappear.</div>
+            </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="main">
+            <section class="panel">
+                <div class="panel-head">
+                    <h1>Output</h1>
+                    <div class="legend" id="output-legend"><span class="lg">green list</span><span class="lr">red list</span></div>
+                </div>
+                <div id="generated"></div>
+                <div id="status"></div>
+            </section>
+
+            <section class="panel" id="step-panel" hidden>
+                <div class="panel-head">
+                    <h2>Next token</h2>
+                    <button id="sample-btn" disabled>Sample next token</button>
+                </div>
+                <div id="step-grid">
+                    <div>
+                        <div class="section-label" id="dist-label">Distribution</div>
+                        <div id="candidates"></div>
+                    </div>
+                    <div id="tournament-col" hidden>
+                        <div class="section-label">Tournament selection</div>
+                        <div id="tournament"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+        const MODE_NOTES = {
+            none: "Plain sampling. Tokens are still classified by the detector, so the green fraction should be near gamma.",
+            hard: "Red-list tokens are banned. Every generated token comes from the green list.",
+            soft: "Green-list tokens receive a logit bonus of delta. Red-list tokens remain possible when the model is confident.",
+            tournament: "SynthID-style tournament sampling: candidates compete in rounds using keyed g-values.",
+        };
+
+        let mode = "none";
+        let sessionId = null;
+        let tokens = [];
+        let stepping = false;
+        let sessionParams = null;
+
+        function setStatus(t) { $("status").textContent = t; }
+
+        function params() {
+            return {
+                prompt: $("prompt").value,
+                mode,
+                gamma: parseFloat($("gamma").value),
+                delta: parseFloat($("delta").value),
+                h: parseInt($("ctx").value, 10),
+                key: $("key").value,
+                red_words: $("red-words").value,
+                max_new: parseInt($("max-new").value, 10),
+            };
+        }
+
+        async function api(path, body) {
+            const res = await fetch(`/api/${path}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `${path} failed`);
+            return data;
+        }
+
+        function updateModeUI() {
+            document.querySelectorAll("#mode-seg button").forEach((b) =>
+                b.classList.toggle("active", b.dataset.mode === mode));
+            document.querySelectorAll("[data-modes]").forEach((el) =>
+                (el.hidden = !el.dataset.modes.split(" ").includes(mode)));
+            $("mode-note").textContent = MODE_NOTES[mode];
+            $("output-legend").hidden = mode === "none";
+        }
+
+        function setBusy(b) {
+            $("generate-btn").disabled = b;
+            $("start-btn").disabled = b;
+            $("detect-btn").disabled = b || !sessionId;
+            $("sample-btn").disabled = b || !stepping;
+            $("candidates").querySelectorAll("button").forEach((x) => (x.disabled = b));
+        }
+
+        function renderTokens(list, flags) {
+            const el = $("generated");
+            el.innerHTML = "";
+            if (list.length === 0) {
+                const p = document.createElement("span");
+                p.id = "generated-placeholder";
+                p.textContent = "Generated tokens will appear here.";
+                el.appendChild(p);
+                return;
+            }
+            list.forEach((t, i) => {
+                const green = flags ? flags[i] : t.green;
+                const box = document.createElement("span");
+                box.className = "token-box " + (mode === "none" ? "" : (green ? "token-green" : "token-red"));
+                box.textContent = t.token;
+                box.title = `id=${t.id}  p=${(t.prob * 100).toFixed(2)}%` +
+                    (t.g ? `  g=${t.g.map((x) => x.toFixed(2)).join(", ")}` : "");
+                el.appendChild(box);
+            });
+        }
+
+        function renderStats(stats, detMode, h) {
+            const { n, greens, gamma, z, p } = stats;
+            if (!n) {
+                $("verdict").textContent = "No tokens yet";
+                $("verdict").className = "none";
+                $("confidence").textContent = "-";
+                $("score-marker").style.left = "0%";
+                ["st-detector", "st-green", "st-z", "st-p"].forEach((i) => ($(i).textContent = "-"));
+                return;
+            }
+            const verdict = $("verdict");
+            if (z > 4) { verdict.textContent = "Watermark detected"; verdict.className = "strong"; }
+            else if (z > 2) { verdict.textContent = "Weak evidence of a watermark"; verdict.className = "weak"; }
+            else { verdict.textContent = "No evidence of a watermark"; verdict.className = "none"; }
+
+            $("confidence").textContent = `${((1 - p) * 100).toFixed(1)}%`;
+            $("score-marker").style.left = `${Math.min(Math.max(greens / n, 0), 1) * 100}%`;
+            $("st-detector").innerHTML = detMode === "tournament"
+                ? `g-values, all rounds<br>(h=${h})`
+                : `green list<br>(&gamma;=${gamma}, h=${h})`;
+            $("st-green").innerHTML = `${greens} / ${n}<br>(${(greens / n * 100).toFixed(0)}%)`;
+            $("st-z").textContent = z.toFixed(2);
+            $("st-p").textContent = p < 0.001 ? p.toExponential(1) : p.toFixed(3);
+        }
+
+        function renderCandidates(dist) {
+            const el = $("candidates");
+            el.innerHTML = "";
+            for (const item of dist) {
+                const btn = document.createElement("button");
+                btn.className = "candidate " + (item.green !== undefined ? (item.green ? "green" : "red") : "");
+                btn.title = `base p=${(item.base_prob * 100).toFixed(2)}%` +
+                    (item.g ? `  g=${item.g.map((x) => x.toFixed(2)).join(", ")}` : "");
+                btn.innerHTML = `<span class="name"></span><div class="bar-track"><div class="bar"></div></div><span class="prob"></span>`;
+                btn.querySelector(".name").textContent = JSON.stringify(item.token);
+                btn.querySelector(".bar").style.width = `${Math.max(item.prob * 100, 1).toFixed(2)}%`;
+                btn.querySelector(".prob").textContent = `${(item.prob * 100).toFixed(1)}%`;
+                btn.addEventListener("click", () => step(item.id));
+                el.appendChild(btn);
+            }
+            if (mode === "none") {
+                $("dist-label").textContent = "Distribution";
+            } else if (mode === "hard" || mode === "soft") {
+                $("dist-label").textContent = "Adjusted distribution (colour marks green / red list)";
+            } else {
+                $("dist-label").textContent = "Distribution (colour marks green / red list)";
+            }
+        }
+
+        function renderTournament(rounds, selected) {
+            const el = $("tournament");
+            el.innerHTML = "";
+            if (!rounds) {
+                el.innerHTML = '<div class="empty">Sample the next token to see the tournament.</div>';
+                return;
+            }
+            rounds.forEach((round, ri) => {
+                const col = document.createElement("div");
+                col.className = "tournament-round";
+                const lab = document.createElement("div");
+                lab.className = "tournament-round-label";
+                lab.textContent = `Round ${ri + 1}`;
+                col.appendChild(lab);
+                for (const m of round) {
+                    const box = document.createElement("div");
+                    box.className = "tournament-match";
+                    for (const k of ["a", "b"]) {
+                        const row = document.createElement("div");
+                        row.className = "tournament-candidate " + (m[k].g > 0.5 ? "g-green " : "g-red ") +
+                            (m.winner === k ? "winner" : "loser");
+                        const a = document.createElement("span");
+                        a.textContent = JSON.stringify(m[k].token);
+                        const g = document.createElement("span");
+                        g.className = "g";
+                        g.textContent = `g=${m[k].g.toFixed(3)}`;
+                        row.append(a, g);
+                        box.appendChild(row);
+                    }
+                    col.appendChild(box);
+                }
+                el.appendChild(col);
+            });
+            const last = tokens[tokens.length - 1];
+            const r = document.createElement("div");
+            r.id = "tournament-result";
+            r.className = last && last.green ? "tr-green" : "tr-red";
+            r.textContent = `${JSON.stringify(selected.token)} wins`;
+            el.appendChild(r);
+        }
+
+        function apply(data) {
+            tokens = data.generated_tokens;
+            renderTokens(tokens);
+            renderStats(data.stats, sessionParams.mode, sessionParams.h);
+            if (stepping) {
+                if (data.done) {
+                    stepping = false;
+                    $("candidates").innerHTML = "";
+                    setStatus("Done.");
+                } else {
+                    renderCandidates(data.distribution);
+                }
+            }
+        }
+
+        async function begin(step) {
+            setBusy(true);
+            setStatus("Loading model and starting session...");
+            try {
+                sessionParams = params();
+                const data = await api("start", sessionParams);
+                sessionId = data.session_id;
+                stepping = step;
+                mode = sessionParams.mode;
+                updateModeUI();
+                $("step-panel").hidden = !step;
+                $("tournament-col").hidden = sessionParams.mode !== "tournament";
+                $("step-grid").classList.toggle("has-tournament", sessionParams.mode === "tournament");
+                renderTournament(null);
+                $("detector-key").value = sessionParams.key;
+                apply(data);
+                return true;
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+                return false;
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        async function generate() {
+            if (!(await begin(false))) return;
+            setBusy(true);
+            setStatus("Generating...");
+            try {
+                apply(await api("auto", { session_id: sessionId }));
+                const st = $("verdict").textContent;
+                setStatus(`Done. ${st} (see Detection for details).`);
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        async function startStepping() {
+            if (await begin(true)) setStatus("Pick a token or sample the next one.");
+        }
+
+        async function step(tokenId) {
+            setBusy(true);
+            try {
+                renderTournament(null);
+                apply(await api("step", { session_id: sessionId, token_id: tokenId }));
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        async function sampleNext() {
+            setBusy(true);
+            try {
+                const data = await api("sample", { session_id: sessionId });
+                apply(data);
+                renderTournament(data.tournament, data.selected_token);
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        async function detect() {
+            setBusy(true);
+            try {
+                const p = params();
+                const data = await api("detect", {
+                    session_id: sessionId,
+                    mode: sessionParams.mode,
+                    key: $("detector-key").value,
+                    gamma: p.gamma,
+                    h: p.h,
+                });
+                renderTokens(tokens, data.green_flags);
+                renderStats(data.stats, sessionParams.mode, p.h);
+            } catch (e) {
+                setStatus(`Error: ${e.message}`);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        function reset() {
+            sessionId = null;
+            stepping = false;
+            tokens = [];
+            $("step-panel").hidden = true;
+            $("candidates").innerHTML = "";
+            renderTournament(null);
+            renderTokens([]);
+            renderStats({ n: 0 });
+            setStatus("");
+            setBusy(false);
+        }
+
+        document.querySelectorAll("#mode-seg button").forEach((b) =>
+            b.addEventListener("click", () => { mode = b.dataset.mode; updateModeUI(); }));
+        $("key").addEventListener("input", () => ($("detector-key").value = $("key").value));
+        $("generate-btn").addEventListener("click", generate);
+        $("start-btn").addEventListener("click", startStepping);
+        $("sample-btn").addEventListener("click", sampleNext);
+        $("detect-btn").addEventListener("click", detect);
+        $("reset-btn").addEventListener("click", reset);
+
+        document.querySelectorAll("[data-toggle]").forEach((head) =>
+            head.addEventListener("click", () => {
+                const panel = $(head.dataset.toggle);
+                const open = panel.classList.contains("collapsed");
+                document.querySelectorAll(".collapsible").forEach((p) => p.classList.add("collapsed"));
+                panel.classList.toggle("collapsed", !open);
+            }));
+
+        updateModeUI();
+        reset();
+    </script>
+</body>
+
+</html>
