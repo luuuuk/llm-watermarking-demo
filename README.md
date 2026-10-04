@@ -2,6 +2,9 @@
 
 A web-based demonstration of LLM watermarking techniques, featuring multiple watermarking algorithms and interactive text generation with watermark detection.
 
+<img width="2481" height="1280" alt="Screenshot_2026-10-04_16-55-12" src="https://github.com/user-attachments/assets/12a86123-fc70-434d-9267-f4178d1c4834" />
+
+
 ## Features
 
 - **Multiple Watermarking Modes**: Choose from `none`, `hard`, `soft`, or `tournament` watermarking strategies
